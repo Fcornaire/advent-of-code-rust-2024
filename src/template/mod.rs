@@ -61,6 +61,16 @@ macro_rules! solution {
 
         fn main() {
             use $crate::template::runner::*;
+            use tracing::Level;
+            use tracing_subscriber::FmtSubscriber;
+
+            let subscriber = FmtSubscriber::builder()
+                .with_max_level(Level::TRACE)
+                .pretty()
+                .finish();
+
+            tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
             let input = $crate::template::read_file("inputs", DAY);
             $( run_part($func, &input, DAY, $part); )*
         }
