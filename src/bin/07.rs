@@ -1,3 +1,4 @@
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use tracing::info;
 
@@ -63,7 +64,18 @@ fn generate_operations_with_concat(numbers: &[u64]) -> Vec<Vec<Operations>> {
     let operators = vec![Operator::Add, Operator::Multiply, Operator::Concatenate];
     let total_combinations = 3_usize.pow((n - 1) as u32);
 
-    (0..total_combinations)
+    // Create the progress bar
+    let progress_bar = ProgressBar::new(total_combinations as u64);
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+
+    let res = (0..total_combinations)
         .into_par_iter()
         .map(|i| {
             let mut current = Vec::new();
@@ -77,7 +89,11 @@ fn generate_operations_with_concat(numbers: &[u64]) -> Vec<Vec<Operations>> {
 
             current
         })
-        .collect()
+        .collect();
+
+    progress_bar.finish_and_clear();
+
+    res
 }
 
 fn parse_input(input: &str) -> Vec<(u64, Vec<Vec<Operations>>)> {
@@ -106,8 +122,19 @@ fn parse_input(input: &str) -> Vec<(u64, Vec<Vec<Operations>>)> {
 }
 
 fn parse_input_part2(input: &str) -> Vec<(u64, Vec<Vec<Operations>>)> {
-    input
-        .lines()
+    // Create the progress bar
+    let progress_bar = ProgressBar::new(input.lines().count() as u64);
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/red}] {pos}/{len} ({eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+    );
+
+    let res = input
+        .par_lines()
         .map(|line| {
             let parts = line.split(":");
             let expected_result: u64 = parts
@@ -125,9 +152,15 @@ fn parse_input_part2(input: &str) -> Vec<(u64, Vec<Vec<Operations>>)> {
 
             let operations = generate_operations_with_concat(&numbers);
 
+            progress_bar.inc(1);
+
             (expected_result, operations)
         })
-        .collect()
+        .collect();
+
+    progress_bar.finish_and_clear();
+
+    res
 }
 
 fn operate(operations: Vec<Operations>) -> u64 {
@@ -191,21 +224,41 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
+    info!("Parsing input for part two");
     let parsed = parse_input_part2(input);
+
+    info!("Starting part two");
+
+    // Create the progress bar
+    let progress_bar = ProgressBar::new(parsed.len() as u64);
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/purple}] {pos}/{len} ({eta})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+    );
 
     let result: u64 = parsed
         .par_iter()
         .map(|(expected_result, operations)| {
-            operations
+            let res = operations
                 .par_iter()
                 .find_first(|operation| {
                     let current: Vec<Operations> = operation.to_vec().clone();
                     let res = operate(current.clone());
                     res == *expected_result
                 })
-                .map_or(0 as u64, |_| *expected_result)
+                .map_or(0 as u64, |_| *expected_result);
+
+            progress_bar.inc(1);
+
+            res
         })
         .sum();
+
+    progress_bar.finish_and_clear();
 
     Some(result)
 }
