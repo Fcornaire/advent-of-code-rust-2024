@@ -64,18 +64,7 @@ fn generate_operations_with_concat(numbers: &[u64]) -> Vec<Vec<Operations>> {
     let operators = vec![Operator::Add, Operator::Multiply, Operator::Concatenate];
     let total_combinations = 3_usize.pow((n - 1) as u32);
 
-    // Create the progress bar
-    let progress_bar = ProgressBar::new(total_combinations as u64);
-    progress_bar.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})",
-            )
-            .unwrap()
-            .progress_chars("#>-"),
-    );
-
-    let res = (0..total_combinations)
+    (0..total_combinations)
         .into_par_iter()
         .map(|i| {
             let mut current = Vec::new();
@@ -89,11 +78,7 @@ fn generate_operations_with_concat(numbers: &[u64]) -> Vec<Vec<Operations>> {
 
             current
         })
-        .collect();
-
-    progress_bar.finish_and_clear();
-
-    res
+        .collect()
 }
 
 fn parse_input(input: &str) -> Vec<(u64, Vec<Vec<Operations>>)> {
