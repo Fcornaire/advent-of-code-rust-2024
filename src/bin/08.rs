@@ -1,5 +1,3 @@
-use std::clone;
-
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tracing::info;
 
@@ -48,7 +46,6 @@ fn get_all_siblings(
 
 fn get_all_possible_antinode_for_sibling(
     all_sibling: &Vec<(char, (i32, i32))>,
-    c: char,
     x: i32,
     y: i32,
 ) -> Vec<(i32, i32)> {
@@ -67,7 +64,6 @@ fn get_all_possible_antinode_for_sibling(
 fn get_all_possible_antinode_in_grind_for_sibling(
     grid: &Vec<Vec<char>>,
     all_sibling: &Vec<(char, (i32, i32))>,
-    c: char,
     x: i32,
     y: i32,
 ) -> Vec<Vec<(i32, i32)>> {
@@ -75,14 +71,16 @@ fn get_all_possible_antinode_in_grind_for_sibling(
         .par_iter()
         .map(|(_, (x2, y2))| ((x - *x2), (y - y2)))
         .map(|(dx, dy)| {
-            let mut x = x + dx;
-            let mut y = y + dy;
+            let mut x_res = x + dx;
+            let mut y_res = y + dy;
             let mut res = Vec::new();
 
-            while is_valid_antinode_position(&grid, x, y) {
-                res.push((x, y));
-                x = x + dx;
-                y = y + dy;
+            while is_valid_antinode_position(&grid, x_res, y_res) {
+                if grid[y_res as usize][x_res as usize] == '.' {
+                    res.push((x_res, y_res));
+                }
+                x_res = x_res + dx;
+                y_res = y_res + dy;
             }
 
             res
@@ -121,8 +119,7 @@ pub fn part_one(input: &str) -> Option<i32> {
 
     antennas.iter().for_each(|(antenna, (x, y))| {
         let siblings = get_all_siblings(&antennas, *antenna, *x, *y);
-        let all_possible_antinode =
-            get_all_possible_antinode_for_sibling(&siblings, *antenna, *x, *y);
+        let all_possible_antinode = get_all_possible_antinode_for_sibling(&siblings, *x, *y);
 
         let valid_antinode = all_possible_antinode
             .par_iter()
@@ -140,6 +137,11 @@ pub fn part_one(input: &str) -> Option<i32> {
         .map(|row| row.par_iter().filter(|&&c| c == '#').count() as i32)
         .sum();
 
+    clone.iter().for_each(|row| {
+        row.iter().for_each(|c| print!("{}", c));
+        println!();
+    });
+
     Some(res)
 }
 
@@ -147,36 +149,31 @@ pub fn part_two(input: &str) -> Option<u32> {
     let grid = parse_input(input);
     let mut clone = grid.clone();
     let antennas: Vec<(char, (i32, i32))> = get_all_antennas(&grid);
-    let mut count = 0;
 
     antennas.iter().for_each(|(antenna, (x, y))| {
         let siblings = get_all_siblings(&antennas, *antenna, *x, *y);
 
         let all_possible_antinode_in_grind =
-            get_all_possible_antinode_in_grind_for_sibling(&clone, &siblings, *antenna, *x, *y);
+            get_all_possible_antinode_in_grind_for_sibling(&clone, &siblings, *x, *y);
 
         all_possible_antinode_in_grind.iter().for_each(|antinode| {
             antinode.iter().for_each(|(x, y)| {
                 clone[*y as usize][*x as usize] = '#';
             });
         });
-        all_possible_antinode_in_grind.iter().for_each(|antinode| {
-            count += antinode.len() as u32;
-        });
     });
 
     let res: u32 = clone
         .par_iter()
-        .map(|row| row.par_iter().filter(|&&c| c == '#').count() as u32)
+        .map(|row| row.par_iter().filter(|&&c| c != '.').count() as u32)
         .sum();
 
-    //print the grid as a grid
-    // clone.iter().for_each(|row| {
-    //     row.iter().for_each(|c| print!("{}", c));
-    //     println!();
-    // });
+    clone.iter().for_each(|row| {
+        row.iter().for_each(|c| print!("{}", c));
+        println!();
+    });
 
-    Some(count)
+    Some(res)
 }
 
 #[cfg(test)]
