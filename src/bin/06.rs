@@ -127,8 +127,36 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(visited as u32)
 }
 
+fn print_grid(grid: &Vec<Vec<char>>) {
+    println!("Grid:");
+    grid.iter().for_each(|row| {
+        row.iter().for_each(|c| print!("{}", c));
+        println!();
+    });
+    println!("End of grid");
+}
+
+fn print_grid_tracing(grid: &Vec<Vec<char>>) {
+    info!("Grid:");
+    //print grind using tracing
+    grid.iter().for_each(|row| {
+        info!("{}", row.iter().collect::<String>());
+    });
+    info!("End of grid");
+}
+
+fn print_visited_grid(grid: &Vec<Vec<char>>, visited_positions: &Vec<(usize, usize)>) {
+    let mut clone = grid.clone();
+    visited_positions.iter().for_each(|(i, j)| {
+        clone[*i][*j] = 'X';
+    });
+
+    print_grid_tracing(&clone);
+}
+
 pub fn part_two(input: &str) -> Option<u32> {
     let mut grid = parse_input(input);
+    let ori_grid = grid.clone();
     let starting_position: Option<(usize, usize)> = grid.iter().enumerate().find_map(|(i, row)| {
         row.iter().enumerate().find_map(|(j, c)| {
             if *c == '^' || *c == '>' || *c == 'v' || *c == '<' {
@@ -141,7 +169,6 @@ pub fn part_two(input: &str) -> Option<u32> {
 
     info!("Starting position: {:?}", starting_position);
     let (mut col, mut row) = starting_position.unwrap().clone();
-    let mut path: Vec<(usize, usize)> = vec![];
 
     while col < grid.len() && row < grid[col].len() {
         let current = grid[col][row];
@@ -179,9 +206,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         };
 
         if next.is_none() {
-            info!("Break at: ({}, {})", col, row);
             grid[col][row] = 'X';
-            path.push((col, row));
             break;
         }
 
@@ -189,7 +214,6 @@ pub fn part_two(input: &str) -> Option<u32> {
 
         match next {
             '.' | 'X' => {
-                path.push((col, row));
                 // continue in the same direction
                 match current {
                     '^' => {
@@ -233,32 +257,44 @@ pub fn part_two(input: &str) -> Option<u32> {
 
     let mut loop_count = 0;
     let mut visited_positions: Vec<(usize, usize)> = vec![];
+    let mut visited_directions: Vec<Direction> = vec![];
     let mut visited_loops: Vec<Vec<(usize, usize)>> = vec![];
 
     grid[starting_position.unwrap().0][starting_position.unwrap().1] = '^';
-    let grid_pathed = grid.clone();
-
-    path.remove(0);
+    print_grid(&grid);
+    let path = grid
+        .iter()
+        .enumerate()
+        .flat_map(|(i, row)| {
+            row.iter()
+                .enumerate()
+                .filter_map(move |(j, c)| if *c == 'X' { Some((i, j)) } else { None })
+        })
+        .collect::<Vec<(usize, usize)>>();
 
     path.iter().for_each(|(i, j)| {
-        info!("Path: ({}, {})", i, j);
-        let mut clone = grid_pathed.clone();
+        let mut clone = ori_grid.clone();
         clone[*i][*j] = '#';
 
+        visited_positions.clear();
+        visited_directions.clear();
+
         let (mut start_col, mut start_row) = starting_position.unwrap().clone();
+
+        info!("Path for ({}, {})", i, j);
 
         while start_col < clone.len() && start_row < clone[start_col].len() {
             let current = clone[start_col][start_row];
             let next = match current {
                 '^' => {
-                    if col > 0 {
+                    if start_col > 0 {
                         Some(clone[start_col - 1][start_row])
                     } else {
                         None
                     }
                 }
                 '>' => {
-                    if row + 1 < clone[start_col].len() {
+                    if start_row + 1 < clone[start_col].len() {
                         Some(clone[start_col][start_row + 1])
                     } else {
                         None
@@ -272,7 +308,7 @@ pub fn part_two(input: &str) -> Option<u32> {
                     }
                 }
                 '<' => {
-                    if row > 0 {
+                    if start_row > 0 {
                         Some(clone[start_col][start_row - 1])
                     } else {
                         None
@@ -284,39 +320,69 @@ pub fn part_two(input: &str) -> Option<u32> {
 
             if next.is_none() {
                 info!("Break at: ({}, {})", start_col, start_row);
+
                 break;
             }
 
-            if visited_positions.contains(&(start_col, start_row)) {
+            if visited_directions.len() == 5 {
+                info!("No loop detected when visited all directions");
+                print_visited_grid(&clone, &visited_positions.clone());
+                break;
+            }
+
+            if visited_positions.contains(&(start_col, start_row)) && visited_directions.len() == 4
+            {
+                info!("position ({}, {}) already visited", start_col, start_row);
+                print_visited_grid(&clone, &visited_positions.clone());
+
                 visited_loops.push(visited_positions.clone());
-                visited_positions.clear();
                 loop_count += 1;
                 break;
-            } else {
-                visited_positions.push((start_col, start_row));
             }
 
             let next = next.unwrap();
 
             match next {
                 '.' | 'X' => {
+                    visited_positions.push((start_col, start_row));
+
                     // continue in the same direction
                     match current {
                         '^' => {
+                            clone[start_col][start_row] = '.';
                             start_col -= 1;
                             clone[start_col][start_row] = '^';
+
+                            if visited_directions.last() != Some(&Direction::Up) {
+                                visited_directions.push(Direction::Up);
+                            }
                         }
                         '>' => {
+                            clone[start_col][start_row] = '.';
                             start_row += 1;
                             clone[start_col][start_row] = '>';
+
+                            if visited_directions.last() != Some(&Direction::Right) {
+                                visited_directions.push(Direction::Right);
+                            }
                         }
                         'v' => {
+                            clone[start_col][start_row] = '.';
                             start_col += 1;
                             clone[start_col][start_row] = 'v';
+
+                            if visited_directions.last() != Some(&Direction::Down) {
+                                visited_directions.push(Direction::Down);
+                            }
                         }
                         '<' => {
+                            clone[start_col][start_row] = '.';
                             start_row -= 1;
                             clone[start_col][start_row] = '<';
+
+                            if visited_directions.last() != Some(&Direction::Left) {
+                                visited_directions.push(Direction::Left);
+                            }
                         }
                         _ => {}
                     }
@@ -337,6 +403,12 @@ pub fn part_two(input: &str) -> Option<u32> {
             }
         }
     });
+
+    info!("printing visited loops");
+
+    // visited_loops.iter().for_each(|loo| {
+    //     print_visited_grid(&ori_grid, loo);
+    // });
 
     println!("Loop count: {}", loop_count);
 
