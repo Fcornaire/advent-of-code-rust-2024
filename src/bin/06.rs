@@ -1,10 +1,7 @@
-use std::{clone, collections::HashSet, sync::Mutex};
+use std::{collections::HashSet, sync::Mutex};
 
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
-use rayon::{
-    iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator},
-    str::ParallelString,
-};
+use indicatif::{ ProgressBar, ProgressStyle};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tracing::info;
 
 advent_of_code::solution!(6);
@@ -18,7 +15,6 @@ enum Direction {
 }
 
 fn parse_input(input: &str) -> Vec<Vec<char>> {
-    // turn input into a grid
     input.lines().map(|line| line.chars().collect()).collect()
 }
 
@@ -43,7 +39,6 @@ pub fn part_one(input: &str) -> Option<u32> {
 
     info!("Starting position: {:?}", starting_position);
     let (mut col, mut row) = starting_position.unwrap();
-    // let mut visited_positions: Vec<(usize, usize)> = vec![];
 
     while col < grid.len() && row < grid[col].len() {
         let current = grid[col][row];
@@ -85,7 +80,6 @@ pub fn part_one(input: &str) -> Option<u32> {
             grid[col][row] = 'X';
             break;
         }
-        // visited_positions.push((col, row));
 
         let next = next.unwrap();
 
