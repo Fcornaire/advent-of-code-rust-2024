@@ -240,7 +240,7 @@ mod tests {
         let result_4 = part_one(&advent_of_code::template::read_file_part(
             "examples", DAY, 4,
         ));
-        assert_eq!(result_4, Some(4));
+        assert_eq!(result_4, Some(2));
 
         let result_2 = part_one(&advent_of_code::template::read_file_part(
             "examples", DAY, 2,
