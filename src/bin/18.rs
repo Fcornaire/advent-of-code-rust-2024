@@ -3,7 +3,9 @@ use std::{
     collections::{BinaryHeap, HashSet},
 };
 
-use tracing::{debug, info, trace};
+use indicatif::ParallelProgressIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use tracing::{debug, info};
 
 advent_of_code::solution!(18);
 
@@ -166,9 +168,9 @@ impl Memory {
     }
 }
 
-fn parse_input(input: &str, width: usize, height: usize, line_to_take: usize) -> Memory {
-    //only take the first line_to_take lines
+fn parse_input(input: &str, width: usize, height: usize, line_to_take: usize) -> (Memory, String) {
     let lines: Vec<&str> = input.lines().take(line_to_take).collect();
+    let last_line_taken = input.lines().nth(line_to_take - 1).unwrap();
 
     let corrupted: HashSet<(usize, usize)> = lines
         .iter()
@@ -186,24 +188,25 @@ fn parse_input(input: &str, width: usize, height: usize, line_to_take: usize) ->
         .flatten()
         .collect();
 
-    Memory {
-        corrupted,
-        width,
-        height,
-    }
+    (
+        Memory {
+            corrupted,
+            width,
+            height,
+        },
+        last_line_taken.to_string(),
+    )
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let memory = parse_input(input, 71, 71, 1024); //for example input,     let memory = parse_input(input, 7, 7, 12);
+    let (memory, _) = parse_input(input, 7, 7, 12); //for real input,     let memory = parse_input(input, 71, 71, 1024);
 
-    info!("Memory: {:?}", memory);
+    // info!("Memory: {:?}", memory);
 
     let result = memory.search_for_end((0, 0));
 
     if result.is_some() {
-        let (visited_positions, path) = result.unwrap();
-        info!("Visited positions: {:?}", visited_positions);
-        info!("Path: {:?}", path);
+        let (_, path) = result.unwrap();
 
         return Some((path.len() - 1) as u32);
     }
@@ -211,7 +214,27 @@ pub fn part_one(input: &str) -> Option<u32> {
     None
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<String> {
+    let total_lines = input.lines().count();
+
+    let res = (12..total_lines) //1024 for real input
+        .into_par_iter()
+        .progress()
+        .map(|line_index| {
+            let (memory, line) = parse_input(input, 7, 7, line_index); //for real input, 71, 71
+
+            (memory.search_for_end((0, 0)), line, line_index)
+        })
+        .filter(|(result, _, _)| result.is_none())
+        .min_by_key(|(_, _, line_index)| *line_index);
+
+    debug!("Result: {:?}", res);
+
+    if res.is_some() {
+        let (_, line, _) = res.unwrap();
+        return Some(line);
+    }
+
     None
 }
 
@@ -233,7 +256,7 @@ mod tests {
         }
 
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(22));
+        assert_eq!(result, Some(22)); //260 for real input
     }
 
     #[test]
@@ -248,6 +271,6 @@ mod tests {
         }
 
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some("6,1".to_string())); //24,48
     }
 }
